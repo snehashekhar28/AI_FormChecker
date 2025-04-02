@@ -6,14 +6,14 @@ print(mp.__version__)
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose()
 mp_drawing = mp.solutions.drawing_utils
-video_path = "./FormChecker/test_videos/squat_14.mp4"
+video_path = "./FormChecker/test_videos/squat_7.mp4"
 cap = cv2.VideoCapture(video_path)
 frame_count = 0
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 #represents the 2d matrix where each pose/landmark of a frame is a column and each frame itself
 #is a row
 frame_pose_vectors = []
-
+file = open()
 # Function to normalize pose using hip width
 def normalize_pose(landmarks):
     """ Normalizes the pose by scaling joints to a unit length based on the hip width. """
@@ -77,7 +77,7 @@ while cap.isOpened():
         break
     frame_count += 1
 # Release resources
-frame_pose_matrix = np.array(frame_pose_vectors)
+frame_pose_matrix = np.array(frame_pose_vectors).T
 print("\nFrame vs. Distance Matrix (Time-Series Representation of Pose):")
 print(frame_pose_matrix)
 print(f"Matrix Shape: {frame_pose_matrix.shape}")  # (Total frames × Distance features
