@@ -6,7 +6,7 @@ print(mp.__version__)
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose()
 mp_drawing = mp.solutions.drawing_utils
-video_path = "./FormChecker/test_videos/squat_11.mp4"
+video_path = "./FormChecker/test_videos/squat_8.mp4"
 cap = cv2.VideoCapture(video_path)
 frame_count = 0
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -16,8 +16,15 @@ frame_pose_vectors = []
 prev_knee_angle = 180 
 tracking_rep = False
 
-# Function to normalize pose using hip width
+fps = cap.get(cv2.CAP_PROP_FPS)
+frame_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+# Create video writer to save rep-only video
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = cv2.VideoWriter("rep_only_video.mp4", fourcc, fps, (frame_width, frame_height))
+
+# Function to normalize pose using hip width
 def calculate_knee_angle(landmarks, side="left"):
     """Calculate the knee angle using hip, knee, and ankle landmarks."""
     if side == "left":
@@ -121,8 +128,8 @@ while cap.isOpened():
         right_knee_angle = calculate_knee_angle(landmarks, side="right")
         print("left_knee_angle: " + str(left_knee_angle))
         print("right_knee_angle: " + str(right_knee_angle))
-        # Use the smaller knee angle (whichever is more bent)
-        knee_angle = min(left_knee_angle, right_knee_angle)
+        # Use the larger knee angle (whichever is more bent)
+        knee_angle = max(left_knee_angle, right_knee_angle)
 
         # Detect rep start (transition from standing to squat)
         if prev_knee_angle >= 150 and knee_angle < 150:
@@ -135,6 +142,7 @@ while cap.isOpened():
         prev_knee_angle = knee_angle  # Update previous angle
         
         if tracking_rep:
+            out.write(frame)
             num_landmarks = len(landmarks)
             normalized_landmarks = normalize_pose(landmarks)
             if normalized_landmarks is None:
