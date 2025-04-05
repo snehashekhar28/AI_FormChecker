@@ -6,7 +6,7 @@ print(mp.__version__)
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose()
 mp_drawing = mp.solutions.drawing_utils
-video_path = "./FormChecker/test_videos/squat_8.mp4"
+video_path = "./FormChecker/squat_multiple_rep.mp4"
 cap = cv2.VideoCapture(video_path)
 frame_count = 0
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -15,6 +15,7 @@ total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 frame_pose_vectors = []
 prev_knee_angle = 180 
 tracking_rep = False
+done_with_one_rep = False
 
 fps = cap.get(cv2.CAP_PROP_FPS)
 frame_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -138,10 +139,10 @@ while cap.isOpened():
         # Detect rep end (transition back to standing)
         if tracking_rep and knee_angle >= 150:
             tracking_rep = False  # Stop tracking
-
+            done_with_one_rep = True
         prev_knee_angle = knee_angle  # Update previous angle
         
-        if tracking_rep:
+        if tracking_rep and not done_with_one_rep:
             out.write(frame)
             num_landmarks = len(landmarks)
             normalized_landmarks = normalize_pose(landmarks)
