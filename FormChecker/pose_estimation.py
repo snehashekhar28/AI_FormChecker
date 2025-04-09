@@ -141,7 +141,8 @@ while cap.isOpened():
             tracking_rep = False  # Stop tracking
             done_with_one_rep = True
         prev_knee_angle = knee_angle  # Update previous angle
-        
+        if done_with_one_rep:
+            break
         if tracking_rep and not done_with_one_rep:
             out.write(frame)
             num_landmarks = len(landmarks)
@@ -166,7 +167,7 @@ while cap.isOpened():
 
 # Release resources
 frame_pose_matrix = np.array(frame_pose_vectors).T
-frame_pose_matrix = interpolate_frames(frame_pose_matrix)
+frame_pose_matrix = interpolate_frames(frame_pose_matrix) 
 print("\nFrame vs. Distance Matrix (Time-Series Representation of Pose):")
 print(frame_pose_matrix)
 print(f"Matrix Shape: {frame_pose_matrix.shape}")  # (Total frames × Distance features
