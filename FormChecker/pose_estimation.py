@@ -3,29 +3,8 @@ import cv2
 import numpy as np
 print(mp.__version__)
 
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose()
-mp_drawing = mp.solutions.drawing_utils
-video_path = "./FormChecker/test_videos/squat_8.mp4"
-cap = cv2.VideoCapture(video_path)
-frame_count = 0
-total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-#represents the 2d matrix where each pose/landmark of a frame is a column and each frame itself
-#is a row
-frame_pose_vectors = []
-prev_knee_angle = 180 
-tracking_rep = False
-
-fps = cap.get(cv2.CAP_PROP_FPS)
-frame_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-# Create video writer to save rep-only video
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter("rep_only_video.mp4", fourcc, fps, (frame_width, frame_height))
-
 # Function to normalize pose using hip width
-def calculate_knee_angle(landmarks, side="left"):
+def calculate_knee_angle(landmarks, mp_pose, side="left"):
     """Calculate the knee angle using hip, knee, and ankle landmarks."""
     if side == "left":
         hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
@@ -57,7 +36,7 @@ def calculate_knee_angle(landmarks, side="left"):
     return angle_degrees
 
 
-def normalize_pose(landmarks):
+def normalize_pose(landmarks, mp_pose):
     """ Normalizes the pose by scaling joints to a unit length based on the hip width. """
     left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
     right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
@@ -105,69 +84,102 @@ def interpolate_frames(frame_pose_vectors, F_fixed=100):
     return interpolated_matrix
 
 
+def get_video_data(video_path, save_vid=False):
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose()
+    mp_drawing = mp.solutions.drawing_utils
+    cap = cv2.VideoCapture(video_path)
+    frame_count = 0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    #represents the 2d matrix where each pose/landmark of a frame is a column and each frame itself
+    #is a row
+    frame_pose_vectors = []
+    prev_knee_angle = 180 
+    tracking_rep = False
+    done_with_one_rep = False
 
-while cap.isOpened():
-    
-    ret, frame = cap.read()
-    if not ret:
-        break
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-  # Process frame with MediaPipe Pose
-    results = pose.process(frame_rgb)
-    
-    # Draw pose landmarks if detected
-    if results.pose_landmarks:
-        mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-        landmarks = results.pose_landmarks.landmark
-        #I believe number of landmarks for us is 32, research paper says they only have 19
-        num_landmarks = len(landmarks)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+    # Create video writer to save rep-only video
 
-        # Calculate knee angle
-        left_knee_angle = calculate_knee_angle(landmarks, side="left")
-        right_knee_angle = calculate_knee_angle(landmarks, side="right")
-        print("left_knee_angle: " + str(left_knee_angle))
-        print("right_knee_angle: " + str(right_knee_angle))
-        # Use the larger knee angle (whichever is more bent)
-        knee_angle = max(left_knee_angle, right_knee_angle)
+    if save_vid:
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter("rep_only_video.mp4", fourcc, fps, (frame_width, frame_height))
 
-        # Detect rep start (transition from standing to squat)
-        if prev_knee_angle >= 150 and knee_angle < 150:
-            tracking_rep = True  # Start tracking
-
-        # Detect rep end (transition back to standing)
-        if tracking_rep and knee_angle >= 150:
-            tracking_rep = False  # Stop tracking
-
-        prev_knee_angle = knee_angle  # Update previous angle
+    while cap.isOpened():
         
-        if tracking_rep:
-            out.write(frame)
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # Process frame with MediaPipe Pose
+        results = pose.process(frame_rgb)
+        
+        # Draw pose landmarks if detected
+        if results.pose_landmarks:
+            mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            landmarks = results.pose_landmarks.landmark
+            #I believe number of landmarks for us is 32, research paper says they only have 19
             num_landmarks = len(landmarks)
-            normalized_landmarks = normalize_pose(landmarks)
-            if normalized_landmarks is None:
-                continue
 
-            distance_vector = []
-            for i in range(num_landmarks):
-                for j in range(i + 1, num_landmarks):  # Only upper triangle
-                    distance = np.linalg.norm(normalized_landmarks[i] - normalized_landmarks[j])
-                    distance_vector.append(distance)
 
-            frame_pose_vectors.append(distance_vector)  # Add to dataset
-         #adding the whole frame to the 2d table           
-    # Display the frame
-    cv2.imshow("MediaPipe Pose", frame)
-    
-    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
-        break
-    frame_count += 1
+            # Calculate knee angle
+            left_knee_angle = calculate_knee_angle(landmarks, mp_pose, side="left")
+            right_knee_angle = calculate_knee_angle(landmarks, mp_pose, side="right")
+            print("left_knee_angle: " + str(left_knee_angle))
+            print("right_knee_angle: " + str(right_knee_angle))
+            # Use the larger knee angle (whichever is more bent)
+            knee_angle = max(left_knee_angle, right_knee_angle)
 
-# Release resources
-frame_pose_matrix = np.array(frame_pose_vectors).T
-frame_pose_matrix = interpolate_frames(frame_pose_matrix)
-print("\nFrame vs. Distance Matrix (Time-Series Representation of Pose):")
-print(frame_pose_matrix)
-print(f"Matrix Shape: {frame_pose_matrix.shape}")  # (Total frames × Distance features
-cap.release()
-cv2.destroyAllWindows()
+            # Detect rep start (transition from standing to squat)
+            if prev_knee_angle >= 150 and knee_angle < 150:
+                tracking_rep = True  # Start tracking
+
+            # Detect rep end (transition back to standing)
+            if tracking_rep and knee_angle >= 150:
+                tracking_rep = False  # Stop tracking
+                done_with_one_rep = True
+            prev_knee_angle = knee_angle  # Update previous angle
+            if done_with_one_rep:
+                break
+            if tracking_rep and not done_with_one_rep:
+                if save_vid:
+                    out.write(frame)
+                num_landmarks = len(landmarks)
+                normalized_landmarks = normalize_pose(landmarks, mp_pose)
+                if normalized_landmarks is None:
+                    continue
+
+                distance_vector = []
+                for i in range(num_landmarks):
+                    for j in range(i + 1, num_landmarks):  # Only upper triangle
+                        distance = np.linalg.norm(normalized_landmarks[i] - normalized_landmarks[j])
+                        distance_vector.append(distance)
+
+                frame_pose_vectors.append(distance_vector)  # Add to dataset
+            #adding the whole frame to the 2d table           
+        # Display the frame
+        if save_vid:
+            cv2.imshow("MediaPipe Pose", frame)
+        
+            if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+                break
+        frame_count += 1
+
+    # Release resources
+    frame_pose_matrix = np.array(frame_pose_vectors).T
+    frame_pose_matrix = interpolate_frames(frame_pose_matrix) 
+    print("\nFrame vs. Distance Matrix (Time-Series Representation of Pose):")
+    print(frame_pose_matrix)
+    print(f"Matrix Shape: {frame_pose_matrix.shape}")  # (Total frames × Distance features
+    cap.release()
+    if save_vid:
+        cv2.destroyAllWindows()
+    return frame_pose_matrix
+
+
+if __name__ == "__main__":
+    video_path = "./FormChecker/test_videos/0918_squat_000029.mp4"
+    get_video_data(video_path=video_path, save_vid=True)
