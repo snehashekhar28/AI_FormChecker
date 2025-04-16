@@ -51,7 +51,7 @@ const LoadingScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Background video placeholder */}
       <Video
-        source={require('../../test_videos/squat_7.mp4')} // Adjust your asset path accordingly
+        source={require('../../assets/squat_7.mp4')} // Adjust your asset path accordingly
         rate={1.0}
         volume={1.0}
         isMuted
