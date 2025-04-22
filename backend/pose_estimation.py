@@ -2,7 +2,55 @@ import mediapipe as mp
 import cv2
 import numpy as np
 import os
+import json
+from openai import OpenAI
+import json
+client = OpenAI(
+  api_key="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"
+)
 
+def calculate_torso_angle(landmarks, mp_pose):
+    """Returns torso lean angle with respect to vertical."""
+    shoulder = np.array([landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].x,
+                         landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].y])
+    hip = np.array([landmarks[mp_pose.PoseLandmark.LEFT_HIP].x,
+                    landmarks[mp_pose.PoseLandmark.LEFT_HIP].y])
+    vertical = np.array([0, -1])
+    torso_vector = shoulder - hip
+    angle_rad = np.arccos(np.dot(torso_vector, vertical) / (np.linalg.norm(torso_vector)))
+    return np.degrees(angle_rad)
+
+def hip_below_knee(landmarks, mp_pose):
+    """Checks if hip is below knee (squat depth)."""
+    left_hip_y = landmarks[mp_pose.PoseLandmark.LEFT_HIP].y
+    left_knee_y = landmarks[mp_pose.PoseLandmark.LEFT_KNEE].y
+    return left_hip_y > left_knee_y  # y increases downwards in image space
+
+def ankle_dorsiflexion(landmarks, mp_pose, side="left"):
+    """Angle between foot and shin to assess ankle mobility."""
+    if side == "left":
+        ankle = np.array([landmarks[mp_pose.PoseLandmark.LEFT_ANKLE].x,
+                          landmarks[mp_pose.PoseLandmark.LEFT_ANKLE].y])
+        knee = np.array([landmarks[mp_pose.PoseLandmark.LEFT_KNEE].x,
+                         landmarks[mp_pose.PoseLandmark.LEFT_KNEE].y])
+        toe = np.array([landmarks[mp_pose.PoseLandmark.LEFT_FOOT_INDEX].x,
+                        landmarks[mp_pose.PoseLandmark.LEFT_FOOT_INDEX].y])
+    else:
+        ankle = np.array([landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE].x,
+                          landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE].y])
+        knee = np.array([landmarks[mp_pose.PoseLandmark.RIGHT_KNEE].x,
+                         landmarks[mp_pose.PoseLandmark.RIGHT_KNEE].y])
+        toe = np.array([landmarks[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX].x,
+                        landmarks[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX].y])
+
+    shin = knee - ankle
+    foot = toe - ankle
+    dot = np.dot(shin, foot)
+    norms = np.linalg.norm(shin) * np.linalg.norm(foot)
+    if norms == 0:
+        return None
+    angle_rad = np.arccos(dot / norms)
+    return np.degrees(angle_rad)
 # Function to normalize pose using hip width
 def calculate_knee_angle(landmarks, mp_pose, side="left"):
     """Calculate the knee angle using hip, knee, and ankle landmarks."""
@@ -101,6 +149,12 @@ def get_video_data(video_path, save_vid=False):
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    min_left_knee_angle = 30000
+    min_right_knee_angle = 30000
+    min_torso_angle = 180
+    min_ankle_dorsi_left = 180
+    min_ankle_dorsi_right = 180
+    hip_below_knee_detected = False
 
     # Create video writer to save rep-only video
 
@@ -126,10 +180,21 @@ def get_video_data(video_path, save_vid=False):
 
 
             # Calculate knee angle
+            torso_angle = calculate_torso_angle(landmarks, mp_pose)
+            min_torso_angle = min(min_torso_angle, torso_angle)
             left_knee_angle = calculate_knee_angle(landmarks, mp_pose, side="left")
             right_knee_angle = calculate_knee_angle(landmarks, mp_pose, side="right")
-            print("left_knee_angle: " + str(left_knee_angle))
-            print("right_knee_angle: " + str(right_knee_angle))
+            ankle_left = ankle_dorsiflexion(landmarks, mp_pose, "left")
+            ankle_right = ankle_dorsiflexion(landmarks, mp_pose, "right")
+            if ankle_left: min_ankle_dorsi_left = min(min_ankle_dorsi_left, ankle_left)
+            if ankle_right: min_ankle_dorsi_right = min(min_ankle_dorsi_right, ankle_right)
+
+            if hip_below_knee(landmarks, mp_pose):
+                hip_below_knee_detected = True
+            if (left_knee_angle < min_left_knee_angle):
+                min_left_knee_angle = left_knee_angle
+            if (right_knee_angle < min_right_knee_angle):
+                min_right_knee_angle = right_knee_angle
             # Use the larger knee angle (whichever is more bent)
             knee_angle = left_knee_angle + right_knee_angle
             prev_greater = (prev_knee_angle[0] + prev_knee_angle[1] >= 280) or (max(prev_knee_angle[0], prev_knee_angle[1]) >= 140 and abs(prev_knee_angle[0] - prev_knee_angle[1]) >= 25)
@@ -182,9 +247,39 @@ def get_video_data(video_path, save_vid=False):
     pose.close()
     cap.release()
     cv2.destroyAllWindows()
-    return frame_pose_matrix
+    results_dict = {"min_left_knee_angle": min_left_knee_angle, 
+                    "min_right_knee_angle": min_right_knee_angle,
+                    "min_torso_angle": min_torso_angle,
+                    "min_ankle_dorsiflexion_left": min_ankle_dorsi_left,
+                    "min_ankle_dorsiflexion_right": min_ankle_dorsi_right,
+                    "is_hip_below_knee": hip_below_knee_detected}
+
+    return frame_pose_matrix, results_dict
+
+
+
+def generate_natural_language_feedback(results_dict):
+
+    prompt = f"""
+    You're a squat coach. I’m giving you 3D pose feature data from a squat rep. Here's the vector:
+
+    {json.dumps(results_dict, indent=2)}
+
+    Analyze the form based on this, but be extremely brief — just 2-3 short high-level tips. MAX, 30 words. Do NOT explain why something is bad or what specific angles mean. Just mention what could be off, in natural language, as if you're texting a friend. No labeling of angles or joint names directly. Just make it sound like quick, casual advice.
+
+    Do NOT summarize or list things in detail. Do NOT say “based on the data.” Just give 2-3 quick tips that someone could try fixing.
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        store=True,  # or "gpt-3.5-turbo"
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message
 
 
 if __name__ == "__main__":
-    video_path = "FormChecker/test_videos/squat_11.mp4"
-    get_video_data(video_path=video_path, save_vid=True)
+    video_path = "/Users/18322/Downloads/0918_squat_000029.mp4"
+    frame_pose_matrix, results_dict = get_video_data(video_path=video_path, save_vid=True)
+    print(generate_natural_language_feedback(results_dict))
