@@ -22,13 +22,13 @@ export default function LoadingScreen() {
       router.replace({
         pathname: '/results',
         params: {
-          score: '7.2',
-          feedback: 'Great effort! Keep your back straighter during squats to protect your spine.',
+          score: '3.4',
+          feedback: 'Good effort, but try to keep your knees above your toes and keep them stable.',
           videoUri,
           workoutType: 'Squat',
         },
       });
-    }, 5000); // 3 second simulated processing
+    }, 10000); // 3 second simulated processing
 
     return () => clearTimeout(timer);
   }, [router, videoUri]);

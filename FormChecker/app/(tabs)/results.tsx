@@ -11,6 +11,7 @@ import {
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BAR_WIDTH = SCREEN_WIDTH * 0.9;
@@ -41,45 +42,48 @@ export default function ResultsScreen() {
     });
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Your score for{'\n'}this workout</Text>
-      <Text style={styles.scoreText}>{numericScore}/10</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.header}>Your score for{'\n'}this workout</Text>
+        <Text style={styles.scoreText}>{numericScore}/10</Text>
 
-      <View style={styles.barContainer}>
-        <LinearGradient
-          colors={['#F56565', '#ED8936', '#48BB78']}
-          start={[0, 0]}
-          end={[1, 0]}
-          style={styles.gradientBar}
-        />
-        <View style={[styles.handle, { left: handleLeft }]} />
-      </View>
+        <View style={styles.barContainer}>
+          <LinearGradient
+            colors={['#F56565', '#ED8936', '#48BB78']}
+            start={[0, 0]}
+            end={[1, 0]}
+            style={styles.gradientBar}
+          />
+          <View style={[styles.handle, { left: handleLeft }]} />
+        </View>
 
-      <VideoView style={styles.video} player={player} contentFit='contain' />
+        <VideoView style={styles.video} player={player} contentFit='contain' />
 
-      <Text style={styles.workoutType}>Workout type: {workoutType}</Text>
+        <Text style={styles.workoutType}>Workout type: {workoutType}</Text>
 
-      <Text style={styles.subheader}>Improvement suggestions</Text>
-      <Text style={styles.feedback}>
-        {feedback}{' '}
-        <Text style={styles.viewMore}>View more</Text>
-      </Text>
+        <Text style={styles.subheader}>Improvement suggestions</Text>
+        <Text style={styles.feedback}>
+          {feedback}{' '}
+          <Text style={styles.viewMore}>View more</Text>
+        </Text>
 
-      <TouchableOpacity
-        style={styles.recordButton}
-        onPress={() => {
-          player.pause();
-          router.replace({pathname: '/',})
-        }}
-      >
-        <Text style={styles.recordButtonText}>Record new workout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity
+          style={styles.recordButton}
+          onPress={() => {
+            player.pause();
+            router.replace({pathname: '/',})
+          }}
+        >
+          <Text style={styles.recordButtonText}>Record new workout</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1C1C1C', padding: 16 },
+  container: { flex: 1, backgroundColor: '#1C1C1C' },
+  scrollContent: { padding: 16, paddingBottom: 32 },
   header:   { color: '#FFF', fontSize: 28, fontWeight: '700', textAlign: 'center', marginTop: 16 },
   scoreText:{ color: '#FF5A5A', fontSize: 48, fontWeight: '700', textAlign: 'center', marginBottom: 16 },
   barContainer: {
