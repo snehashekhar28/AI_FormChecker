@@ -37,16 +37,19 @@ export default function UploadScreen() {
   // pick-and-upload in one go
   const pickAndUpload = async () => {
     try {
+      setUploading(true);
+      setUploadProgress(0);
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
         quality: 1,
       });
       console.log(res)
-      if (res.canceled) return;
+      if (res.canceled) {
+        setUploading(false);
+        return;
+      }
       setVideoUri(res.assets[0].uri);
-      setUploading(true);
-      setUploadProgress(0);
 
       // stub upload progress
       let pct = 0;

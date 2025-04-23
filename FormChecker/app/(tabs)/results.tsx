@@ -36,6 +36,7 @@ export default function ResultsScreen() {
   );
   const player = useVideoPlayer({ uri: videoUri }, player => {
       player.loop = true;
+      player.muted = false;
       player.play();
     });
 
@@ -68,7 +69,7 @@ export default function ResultsScreen() {
         style={styles.recordButton}
         onPress={() => {
           player.pause();
-          router.replace({pathname: '/index',})
+          router.replace({pathname: '/',})
         }}
       >
         <Text style={styles.recordButtonText}>Record new workout</Text>

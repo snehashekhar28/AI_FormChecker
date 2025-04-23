@@ -9,10 +9,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function LoadingScreen() {
   const router = useRouter();
   const { videoUri } = useLocalSearchParams<{ videoUri: string }>();
-  // const player = useVideoPlayer(require('../../assets/squat_7.mp4'), player => {
-  //   player.loop = true;
-  //   player.play();
-  // });
   const player = useVideoPlayer({ uri: videoUri }, player => {
     player.loop = true;
     player.muted = true;
