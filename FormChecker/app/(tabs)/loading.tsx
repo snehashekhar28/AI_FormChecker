@@ -1,7 +1,7 @@
 // app/(tabs)/loading.tsx
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { Video } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -9,10 +9,20 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function LoadingScreen() {
   const router = useRouter();
   const { videoUri } = useLocalSearchParams<{ videoUri: string }>();
+  // const player = useVideoPlayer(require('../../assets/squat_7.mp4'), player => {
+  //   player.loop = true;
+  //   player.play();
+  // });
+  const player = useVideoPlayer({ uri: videoUri }, player => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
   
   useEffect(() => {
     const timer = setTimeout(() => {
       // Replace with real analysis results when ready
+      player.pause();
       router.replace({
         pathname: '/results',
         params: {
@@ -22,21 +32,14 @@ export default function LoadingScreen() {
           workoutType: 'Squat',
         },
       });
-    }, 3000); // 3 second simulated processing
+    }, 5000); // 3 second simulated processing
 
     return () => clearTimeout(timer);
   }, [router, videoUri]);
 
   return (
     <View style={styles.container}>
-      <Video
-        source={{ uri: videoUri }}
-        style={styles.video}
-        shouldPlay
-        isLooping
-        isMuted
-        resizeMode="cover"
-      />
+      <VideoView style={styles.video} player={player} contentFit='cover' allowsFullscreen allowsPictureInPicture />
       <View style={styles.overlay}>
         <Text style={styles.text}>Analyzing your workout…</Text>
       </View>

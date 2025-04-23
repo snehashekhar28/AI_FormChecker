@@ -8,7 +8,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import { Video } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
@@ -34,6 +34,10 @@ export default function ResultsScreen() {
     () => (numericScore / 10) * (BAR_WIDTH - HANDLE_SIZE),
     [numericScore]
   );
+  const player = useVideoPlayer({ uri: videoUri }, player => {
+      player.loop = true;
+      player.play();
+    });
 
   return (
     <ScrollView style={styles.container}>
@@ -50,12 +54,7 @@ export default function ResultsScreen() {
         <View style={[styles.handle, { left: handleLeft }]} />
       </View>
 
-      <Video
-        source={{ uri: videoUri }}
-        style={styles.video}
-        useNativeControls
-        resizeMode="contain"
-      />
+      <VideoView style={styles.video} player={player} contentFit='contain' />
 
       <Text style={styles.workoutType}>Workout type: {workoutType}</Text>
 
@@ -67,7 +66,10 @@ export default function ResultsScreen() {
 
       <TouchableOpacity
         style={styles.recordButton}
-        onPress={() => router.replace('/upload')}
+        onPress={() => {
+          player.pause();
+          router.replace({pathname: '/index',})
+        }}
       >
         <Text style={styles.recordButtonText}>Record new workout</Text>
       </TouchableOpacity>

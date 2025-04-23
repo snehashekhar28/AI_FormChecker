@@ -9,7 +9,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { Video } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
@@ -18,6 +18,9 @@ export default function UploadScreen() {
   const [videoUri, setVideoUri] = useState<string| null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const player = useVideoPlayer({ uri: videoUri }, player => {
+    player.loop = true;
+  });
 
   // ask permissions once
   useEffect(() => {
@@ -37,10 +40,11 @@ export default function UploadScreen() {
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
-        quality: 0.8,
+        quality: 1,
       });
-      if (res.cancelled) return;
-      setVideoUri(res.uri);
+      console.log(res)
+      if (res.canceled) return;
+      setVideoUri(res.assets[0].uri);
       setUploading(true);
       setUploadProgress(0);
 
@@ -57,7 +61,7 @@ export default function UploadScreen() {
         setUploading(false);
         router.push({
           pathname: '/loading',
-          params: { videoUri: res.uri },
+          params: { videoUri: res.assets[0].uri},
         });
       }, 1200);
     } catch (err) {
@@ -80,14 +84,9 @@ export default function UploadScreen() {
         </Text>
       </TouchableOpacity>
 
-      {videoUri && (
+      {videoUri && player && (
         <View style={styles.videoContainer}>
-          <Video
-            source={{ uri: videoUri }}
-            useNativeControls
-            resizeMode="contain"
-            style={styles.video}
-          />
+          <VideoView style={styles.video} player={player} contentFit='contain' />
         </View>
       )}
     </View>
