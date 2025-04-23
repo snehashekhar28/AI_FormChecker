@@ -310,5 +310,5 @@ def classify(mat):
   
 
 if __name__ == "__main__":
-    mat = pose_estimation.get_video_data("/Users/mukundmaini/Downloads/Video_Dataset/good/1115_video/0922_squat_000102.mp4", save_vid=False)
+    mat, results_dict = pose_estimation.get_video_data("/Users/mukundmaini/Downloads/Video_Dataset/good/1115_video/0918_squat_000045.mp4", save_vid=False)
     classify(mat)
