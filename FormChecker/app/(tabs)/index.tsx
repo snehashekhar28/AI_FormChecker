@@ -1,74 +1,137 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+// app/(tabs)/upload.tsx
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Platform,
+} from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function UploadScreen() {
+  const router = useRouter();
+  const [videoUri, setVideoUri] = useState<string| null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const player = useVideoPlayer({ uri: videoUri }, player => {
+    player.loop = true;
+  });
 
-export default function HomeScreen() {
+  // ask permissions once
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission required', 'Please allow photo library access.');
+        }
+      }
+    })();
+  }, []);
+
+  // pick-and-upload in one go
+  const pickAndUpload = async () => {
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1,
+      });
+      console.log(res)
+      if (res.canceled) {
+        setUploading(false);
+        return;
+      }
+      setVideoUri(res.assets[0].uri);
+
+      // stub upload progress
+      let pct = 0;
+      const iv = setInterval(() => {
+        pct += 25;
+        setUploadProgress(pct);
+      }, 300);
+
+      // after ~1.2s, go to Loading
+      setTimeout(() => {
+        clearInterval(iv);
+        setUploading(false);
+        router.push({
+          pathname: '/loading',
+          params: { videoUri: res.assets[0].uri},
+        });
+      }, 1200);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Could not select video.');
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Upload Your Workout Video</Text>
+
+      <TouchableOpacity
+        style={[styles.button, uploading && { opacity: 0.6 }]}
+        onPress={pickAndUpload}
+        disabled={uploading}
+      >
+        <Text style={styles.buttonText}>
+          {uploading ? `Uploading ${uploadProgress}%` : 'Select & Analyze Video'}
+        </Text>
+      </TouchableOpacity>
+
+      {videoUri && player && (
+        <View style={styles.videoContainer}>
+          <VideoView style={styles.video} player={player} contentFit='contain' />
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    backgroundColor: '#1C1C1C',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    padding: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 20,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  button: {
+    backgroundColor: '#FF5A5A',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  videoContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#2C2C2C',
+    marginTop: 20,
+  },
+  video: {
+    width: '100%',
+    height: '100%',
   },
 });
