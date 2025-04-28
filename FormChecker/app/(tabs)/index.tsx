@@ -17,7 +17,7 @@ import {resetLastAnalysis} from '../utils/streaming';
 
 export default function UploadScreen() {
   const router = useRouter();
-  const [videoUri, setVideoUri] = useState<string| null>(null);
+  const [videoUri, setVideoUri] = useState<string| undefined>();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [playerInstance, setPlayerInstance] = useState<any>(null);
@@ -59,7 +59,6 @@ export default function UploadScreen() {
       });
       console.log(res)
       if (res.canceled) {
-        clearInterval(iv);
         setUploading(false);
         return;
       }
