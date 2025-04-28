@@ -475,11 +475,13 @@ def classify(mat):
         pred = torch.argmax(probs, dim=1).item()  # get predicted class (0 or 1)
         conf = probs[0][pred].item()  # get confidence of the predicted class
 
-    # Map prediction to label
-    label_map = {0: "Bad Squat", 1: "Good Squat"}
-    print(f"✅ Your squat is {conf * 100:.2f}% {label_map[pred].lower()}.")
+        # Map prediction to label
+        label_map = {0: "Bad Squat", 1: "Good Squat"}
+        print(f"✅ Your squat is {conf * 100:.2f}% {label_map[pred].lower()}.")
+        return probs[0][1].item()
+
   
 
 if __name__ == "__main__":
     mat, results_dict = pose_estimation.get_video_data("/Users/mukundmaini/Downloads/IMG_2944.MOV", save_vid=False)
-    classify(mat)
+    print(classify(mat))

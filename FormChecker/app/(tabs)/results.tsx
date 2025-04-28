@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   },
   handle: {
     position: 'absolute',
-    top: -(HANDLE_SIZE - BAR_HEIGHT) / 2,
+    top: (-(HANDLE_SIZE - BAR_HEIGHT) / 2) + 6,
     width: HANDLE_SIZE,
     height: HANDLE_SIZE,
     borderRadius: HANDLE_SIZE / 2,

@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import {subscribeAnalysis, resetLastAnalysis} from '../utils/streaming';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -16,22 +17,24 @@ export default function LoadingScreen() {
   });
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Replace with real analysis results when ready
+    const unsubscribe = subscribeAnalysis((data: any) => {
+      const { score, feedback } = data;
+      console.log("received results");
       player.pause();
       router.replace({
         pathname: '/results',
         params: {
-          score: '3.4',
-          feedback: 'Good effort, but try to keep your knees above your toes and keep them stable.',
+          score: (String)(score),
+          feedback: feedback,
           videoUri,
           workoutType: 'Squat',
         },
       });
-    }, 10000); // 3 second simulated processing
-
-    return () => clearTimeout(timer);
-  }, [router, videoUri]);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <View style={styles.container}>

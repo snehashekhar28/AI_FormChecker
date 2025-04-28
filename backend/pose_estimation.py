@@ -132,7 +132,7 @@ def interpolate_frames(frame_pose_vectors, F_fixed=100):
     return interpolated_matrix
 
 
-def get_video_data(video_path, save_vid=False):
+def get_video_data(video_path, save_vid=False, save_path='./rep_only_video.mp4', display_vid=True):
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose()
     mp_drawing = mp.solutions.drawing_utils
@@ -156,18 +156,32 @@ def get_video_data(video_path, save_vid=False):
     min_ankle_dorsi_right = 180
     hip_below_knee_detected = False
 
-    # Create video writer to save rep-only video
+    # Check for rotated video
+    test_ret, test_frame = cap.read()
+    h, w = test_frame.shape[:2]
+    do_rotate = (w > h)
 
+    # Create video writer to save rep-only video
     if save_vid:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter("rep_only_video.mp4", fourcc, fps, (frame_width, frame_height))
+        if do_rotate:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out = cv2.VideoWriter(save_path, fourcc, fps, (h, w))
+        else:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out = cv2.VideoWriter(save_path, fourcc, fps, (frame_width, frame_height))
+    
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
     while cap.isOpened():
         
         ret, frame = cap.read()
         if not ret:
             break
+
+        if do_rotate:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
     # Process frame with MediaPipe Pose
         results = pose.process(frame_rgb)
         
@@ -230,7 +244,7 @@ def get_video_data(video_path, save_vid=False):
                 frame_pose_vectors.append(distance_vector)  # Add to dataset
             #adding the whole frame to the 2d table           
         # Display the frame
-        if save_vid:
+        if display_vid:
             cv2.imshow("MediaPipe Pose", frame)
         
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
@@ -247,6 +261,8 @@ def get_video_data(video_path, save_vid=False):
     pose.close()
     cap.release()
     cv2.destroyAllWindows()
+    print("save?", save_vid)
+    print("saved annotated to:", save_path)
     results_dict = {"min_left_knee_angle": min_left_knee_angle, 
                     "min_right_knee_angle": min_right_knee_angle,
                     "min_torso_angle": min_torso_angle,
@@ -276,7 +292,7 @@ def generate_natural_language_feedback(results_dict):
         messages=[{"role": "user", "content": prompt}]
     )
 
-    return response.choices[0].message
+    return response.choices[0].message.content
 
 
 if __name__ == "__main__":
