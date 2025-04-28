@@ -3,10 +3,14 @@ import cv2
 import numpy as np
 import os
 import json
+import dotenv
 from openai import OpenAI
 import json
+
+dotenv.load_dotenv()
+
 client = OpenAI(
-  api_key="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"
+  api_key=os.getenv("OPENAI_API_KEY")
 )
 
 def calculate_torso_angle(landmarks, mp_pose):
@@ -296,6 +300,6 @@ def generate_natural_language_feedback(results_dict):
 
 
 if __name__ == "__main__":
-    video_path = "/Users/18322/Downloads/0918_squat_000029.mp4"
-    frame_pose_matrix, results_dict = get_video_data(video_path=video_path, save_vid=True)
+    video_path = "/Users/mukundmaini/Downloads/IMG_2943.MOV"
+    frame_pose_matrix, results_dict = get_video_data(video_path=video_path, save_vid=False)
     print(generate_natural_language_feedback(results_dict))
