@@ -17,21 +17,26 @@ export default function LoadingScreen() {
   });
   
   useEffect(() => {
-    const unsubscribe = subscribeAnalysis((data: any) => {
-      const { score, feedback } = data;
-      console.log("received results");
-      player.pause();
-      router.replace({
-        pathname: '/results',
-        params: {
-          score: (String)(score),
-          feedback: feedback,
-          videoUri,
-          workoutType: 'Squat',
-        },
+    let unsubscribe: any;
+    resetLastAnalysis();
+    const timer = setTimeout(() => {
+      unsubscribe = subscribeAnalysis((data: any) => {
+        const { score, feedback } = data;
+        console.log("received results");
+        player.pause();
+        router.replace({
+          pathname: '/results',
+          params: {
+            score: (String)(score),
+            feedback: feedback,
+            videoUri,
+            workoutType: 'Squat',
+          },
+        });
       });
-    });
+    }, 4000);
     return () => {
+      clearTimeout(timer);
       unsubscribe();
     };
   }, []);
